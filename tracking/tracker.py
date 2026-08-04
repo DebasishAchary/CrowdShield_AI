@@ -5,6 +5,8 @@ from detection.detector import PersonDetector
 from analytics.density import CrowdDensity
 from prediction.risk_engine import RiskEngine
 from recommendation.recommender import RecommendationEngine
+from analytics.heatmap import CrowdHeatmap
+from analytics.flow import CrowdFlow
 
 # =====================================================
 # Project Paths
@@ -25,6 +27,8 @@ detector = PersonDetector()
 density = CrowdDensity()
 risk_engine = RiskEngine()
 recommender = RecommendationEngine()
+heatmap = CrowdHeatmap()
+flow = CrowdFlow()
 
 # =====================================================
 # Open Video
@@ -53,6 +57,7 @@ while True:
     annotated = frame.copy()
 
     density.reset()
+    flow.reset()
 
     # =====================================================
     # Person Tracking
@@ -108,6 +113,15 @@ while True:
                 frame.shape[1],
                 frame.shape[0]
             )
+            heatmap.update(
+                center_x,
+                center_y
+            )
+            flow.update(
+                track_id,
+                center_x,
+                center_y
+            )
 
     # =====================================================
     # Crowd Density Analysis
@@ -118,6 +132,8 @@ while True:
     risk = risk_engine.evaluate(zones)
 
     recommendation = recommender.generate(risk)
+
+    flow_stats = flow.get_flow()
 
     total_people = risk["total_people"]
 
@@ -194,7 +210,7 @@ while True:
     cv2.rectangle(
         annotated,
         (10, 60),
-        (610, 500),
+        (610, 650),
         (40, 40, 40),
         -1
     )
@@ -284,10 +300,98 @@ while True:
         y += 32
 
     # =====================================================
+    # Crowd Flow Statistics
+    # =====================================================
+
+    y += 20
+
+    cv2.line(
+        annotated,
+        (20, y),
+        (590, y),
+        (80, 80, 80),
+        2
+    )
+
+    y += 35
+
+    cv2.putText(
+        annotated,
+        "Crowd Flow",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.75,
+        (0, 255, 255),
+        2
+    )
+
+    y += 35
+
+    cv2.putText(
+        annotated,
+        f"UP : {flow_stats['UP']}",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    y += 30
+
+    cv2.putText(
+        annotated,
+        f"DOWN : {flow_stats['DOWN']}",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    y += 30
+
+    cv2.putText(
+        annotated,
+        f"LEFT : {flow_stats['LEFT']}",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    y += 30
+
+    cv2.putText(
+        annotated,
+        f"RIGHT : {flow_stats['RIGHT']}",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    y += 30
+
+    cv2.putText(
+        annotated,
+        f"STATIONARY : {flow_stats['STATIONARY']}",
+        (25, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255,255,255),
+        2
+    )
+
+    # =====================================================
     # Display
     # =====================================================
 
     cv2.imshow("CrowdShield AI", annotated)
+
+    annotated = heatmap.draw(annotated)
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
