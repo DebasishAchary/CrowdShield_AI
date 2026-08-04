@@ -5,8 +5,10 @@ from detection.detector import PersonDetector
 from analytics.density import CrowdDensity
 from prediction.risk_engine import RiskEngine
 from recommendation.recommender import RecommendationEngine
-from analytics.heatmap import CrowdHeatmap
+# from analytics.heatmap import CrowdHeatmap
 from analytics.flow import CrowdFlow
+from analytics.bottleneck import BottleneckDetector
+from backend.state import latest_data
 
 # =====================================================
 # Project Paths
@@ -27,8 +29,9 @@ detector = PersonDetector()
 density = CrowdDensity()
 risk_engine = RiskEngine()
 recommender = RecommendationEngine()
-heatmap = CrowdHeatmap()
+# heatmap = CrowdHeatmap()
 flow = CrowdFlow()
+bottleneck = BottleneckDetector()
 
 # =====================================================
 # Open Video
@@ -113,10 +116,10 @@ while True:
                 frame.shape[1],
                 frame.shape[0]
             )
-            heatmap.update(
-                center_x,
-                center_y
-            )
+            # heatmap.update(
+            #     center_x,
+            #     center_y
+            # )
             flow.update(
                 track_id,
                 center_x,
@@ -135,7 +138,28 @@ while True:
 
     flow_stats = flow.get_flow()
 
+    bottleneck_info = bottleneck.detect(
+    zones,
+    flow_stats
+    )
+
+    # =====================================================
+    # Update Shared Backend State
+    # =====================================================
+
     total_people = risk["total_people"]
+
+    latest_data.update({
+        "people": total_people,
+        "risk": risk["risk"],
+        "highest_zone": risk["highest_zone"],
+        "zones": zones.copy(),
+        "flow": flow_stats.copy(),
+        "recommendations": recommendation["recommendations"].copy(),
+        "bottleneck": bottleneck_info.copy()
+    })
+
+    print("API Updated:", latest_data)
 
     h, w = annotated.shape[:2]
 
@@ -207,183 +231,121 @@ while True:
     # AI Command Center Dashboard
     # =====================================================
 
-    cv2.rectangle(
-        annotated,
-        (10, 60),
-        (610, 650),
-        (40, 40, 40),
-        -1
-    )
-
     cv2.putText(
         annotated,
-        "CrowdShield AI Dashboard",
-        (25, 90),
+        f"People : {total_people}",
+        (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.85,
-        (0, 255, 255),
+        0.8,
+        (255,255,255),
         2
     )
 
     cv2.putText(
         annotated,
-        f"People Count : {total_people}",
-        (25, 130),
+        f"Risk : {risk['risk']}",
+        (20, 75),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (255, 255, 255),
-        2
-    )
-
-    cv2.putText(
-        annotated,
-        f"Risk Level : {risk['risk']}",
-        (25, 165),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
+        0.8,
         risk["color"],
         2
     )
 
     cv2.putText(
         annotated,
-        f"Highest Risk Zone : {risk['highest_zone']}",
-        (25, 200),
+        f"Zone : {risk['highest_zone']}",
+        (20, 110),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (255, 255, 255),
+        0.8,
+        (0,255,255),
         2
     )
-
-    cv2.putText(
-        annotated,
-        f"Reason : {risk['reason']}",
-        (25, 235),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.70,
-        (255, 255, 255),
-        2
-    )
-
-    cv2.line(
-        annotated,
-        (20, 255),
-        (590, 255),
-        (80, 80, 80),
-        2
-    )
-
-    cv2.putText(
-        annotated,
-        "AI Recommendations",
-        (25, 285),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (0, 255, 255),
-        2
-    )
-
-    y = 320
-
-    for rec in recommendation["recommendations"]:
-
-        cv2.putText(
-            annotated,
-            f"- {rec}",
-            (35, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.60,
-            (255, 255, 255),
-            2
-        )
-
-        y += 32
 
     # =====================================================
     # Crowd Flow Statistics
     # =====================================================
 
-    y += 20
+    # y += 20
 
-    cv2.line(
-        annotated,
-        (20, y),
-        (590, y),
-        (80, 80, 80),
-        2
-    )
+    # cv2.line(
+    #     annotated,
+    #     (20, y),
+    #     (590, y),
+    #     (80, 80, 80),
+    #     2
+    # )
 
-    y += 35
+    # y += 35
 
-    cv2.putText(
-        annotated,
-        "Crowd Flow",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.75,
-        (0, 255, 255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     "Crowd Flow",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.75,
+    #     (0, 255, 255),
+    #     2
+    # )
 
-    y += 35
+    # y += 35
 
-    cv2.putText(
-        annotated,
-        f"UP : {flow_stats['UP']}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     f"UP : {flow_stats['UP']}",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255,255,255),
+    #     2
+    # )
 
-    y += 30
+    # y += 30
 
-    cv2.putText(
-        annotated,
-        f"DOWN : {flow_stats['DOWN']}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     f"DOWN : {flow_stats['DOWN']}",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255,255,255),
+    #     2
+    # )
 
-    y += 30
+    # y += 30
 
-    cv2.putText(
-        annotated,
-        f"LEFT : {flow_stats['LEFT']}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     f"LEFT : {flow_stats['LEFT']}",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255,255,255),
+    #     2
+    # )
 
-    y += 30
+    # y += 30
 
-    cv2.putText(
-        annotated,
-        f"RIGHT : {flow_stats['RIGHT']}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     f"RIGHT : {flow_stats['RIGHT']}",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255,255,255),
+    #     2
+    # )
 
-    y += 30
+    # y += 30
 
-    cv2.putText(
-        annotated,
-        f"STATIONARY : {flow_stats['STATIONARY']}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255,255,255),
-        2
-    )
+    # cv2.putText(
+    #     annotated,
+    #     f"STATIONARY : {flow_stats['STATIONARY']}",
+    #     (25, y),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255,255,255),
+    #     2
+    # )
 
     # =====================================================
     # Display
@@ -391,7 +353,12 @@ while True:
 
     cv2.imshow("CrowdShield AI", annotated)
 
-    annotated = heatmap.draw(annotated)
+    print("=" * 50)
+    print(f"People        : {total_people}")
+    print(f"Risk          : {risk['risk']}")
+    print(f"Highest Zone  : {risk['highest_zone']}")
+    print(f"Flow          : {flow_stats}")
+    print(f"Bottleneck    : {bottleneck_info}")
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
