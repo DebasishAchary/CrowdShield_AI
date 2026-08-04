@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 VIDEO = BASE_DIR / "datasets" / "videos" / "crowd1.mp4"
 
 print("=" * 60)
-print("CrowdShield AI - Tracking & Risk Detection")
+print("CrowdShield AI - Tracking & AI Decision Support")
 print("=" * 60)
 
 # =====================================================
@@ -47,18 +47,18 @@ while True:
 
     frame_count += 1
 
-    # Resize for faster inference
+    # Resize for faster processing
     frame = cv2.resize(frame, (1280, 720))
+
+    annotated = frame.copy()
 
     density.reset()
 
-    # ===========================
+    # =====================================================
     # Person Tracking
-    # ===========================
+    # =====================================================
 
     results = detector.track(frame)
-
-    annotated = frame.copy()
 
     boxes = results[0].boxes
 
@@ -79,7 +79,7 @@ while True:
                 2
             )
 
-            # ID
+            # Tracking ID
             cv2.putText(
                 annotated,
                 f"ID:{track_id}",
@@ -90,7 +90,7 @@ while True:
                 2
             )
 
-            # Center Point
+            # Person Center
             center_x = (x1 + x2) // 2
             center_y = (y1 + y2) // 2
 
@@ -110,7 +110,7 @@ while True:
             )
 
     # =====================================================
-    # Density Analysis
+    # Crowd Density Analysis
     # =====================================================
 
     zones = density.get_counts()
@@ -119,10 +119,12 @@ while True:
 
     recommendation = recommender.generate(risk)
 
+    total_people = risk["total_people"]
+
     h, w = annotated.shape[:2]
 
     # =====================================================
-    # Zone Lines
+    # Draw Zone Lines
     # =====================================================
 
     cv2.line(
@@ -145,97 +147,141 @@ while True:
     # Zone Counts
     # =====================================================
 
-    cv2.putText(annotated, f"A : {zones['A']}", (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-
-    cv2.putText(annotated, f"B : {zones['B']}", (w-140, 40),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-
-    cv2.putText(annotated, f"C : {zones['C']}", (20, h-20),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-
-    cv2.putText(annotated, f"D : {zones['D']}", (w-140, h-20),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
-
-    # =====================================================
-    # Dashboard
-    # =====================================================
-
-    total_people = risk["total_people"]
-
-    cv2.rectangle(
-    annotated,
-    (10, 60),
-    (560, 420),
-    (40, 40, 40),
-    -1
-    )
-
     cv2.putText(
         annotated,
-        f"People : {total_people}",
-        (25,95),
+        f"A : {zones['A']}",
+        (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
-        (255,255,255),
+        1,
+        (0, 255, 0),
         2
     )
 
     cv2.putText(
         annotated,
-        f"Risk : {risk['risk']}",
-        (25,135),
+        f"B : {zones['B']}",
+        (w - 140, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
+        1,
+        (0, 255, 0),
+        2
+    )
+
+    cv2.putText(
+        annotated,
+        f"C : {zones['C']}",
+        (20, h - 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 0),
+        2
+    )
+
+    cv2.putText(
+        annotated,
+        f"D : {zones['D']}",
+        (w - 140, h - 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 0),
+        2
+    )
+
+    # =====================================================
+    # AI Command Center Dashboard
+    # =====================================================
+
+    cv2.rectangle(
+        annotated,
+        (10, 60),
+        (610, 500),
+        (40, 40, 40),
+        -1
+    )
+
+    cv2.putText(
+        annotated,
+        "CrowdShield AI Dashboard",
+        (25, 90),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.85,
+        (0, 255, 255),
+        2
+    )
+
+    cv2.putText(
+        annotated,
+        f"People Count : {total_people}",
+        (25, 130),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.75,
+        (255, 255, 255),
+        2
+    )
+
+    cv2.putText(
+        annotated,
+        f"Risk Level : {risk['risk']}",
+        (25, 165),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.75,
         risk["color"],
         2
     )
 
     cv2.putText(
-    annotated,
-    f"Highest Zone : {risk['highest_zone']}",
-    (25,175),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.8,
-    (255,255,255),
-    2
+        annotated,
+        f"Highest Risk Zone : {risk['highest_zone']}",
+        (25, 200),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.75,
+        (255, 255, 255),
+        2
     )
 
     cv2.putText(
         annotated,
         f"Reason : {risk['reason']}",
-        (25,210),
+        (25, 235),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255,255,255),
+        0.70,
+        (255, 255, 255),
+        2
+    )
+
+    cv2.line(
+        annotated,
+        (20, 255),
+        (590, 255),
+        (80, 80, 80),
         2
     )
 
     cv2.putText(
         annotated,
-        "Recommendation:",
-        (25,245),
+        "AI Recommendations",
+        (25, 285),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (0,255,255),
+        0.75,
+        (0, 255, 255),
         2
     )
 
-    y = 280
+    y = 320
 
     for rec in recommendation["recommendations"]:
 
-         cv2.putText(
+        cv2.putText(
             annotated,
             f"- {rec}",
-            (25, y),
+            (35, y),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            (255,255,255),
+            0.60,
+            (255, 255, 255),
             2
         )
 
-         y += 28
+        y += 32
 
     # =====================================================
     # Display
@@ -245,6 +291,10 @@ while True:
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
+
+# =====================================================
+# Cleanup
+# =====================================================
 
 cap.release()
 cv2.destroyAllWindows()
