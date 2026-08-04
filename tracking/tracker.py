@@ -225,17 +225,17 @@ while True:
 
     for rec in recommendation["recommendations"]:
 
-     cv2.putText(
-        annotated,
-        f"- {rec}",
-        (25, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.55,
-        (255,255,255),
-        2
-    )
+         cv2.putText(
+            annotated,
+            f"- {rec}",
+            (25, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255,255,255),
+            2
+        )
 
-    y += 28
+         y += 28
 
     # =====================================================
     # Display
