@@ -4,6 +4,7 @@ import cv2
 from detection.detector import PersonDetector
 from analytics.density import CrowdDensity
 from prediction.risk_engine import RiskEngine
+from recommendation.recommender import RecommendationEngine
 
 # =====================================================
 # Project Paths
@@ -23,6 +24,7 @@ print("=" * 60)
 detector = PersonDetector()
 density = CrowdDensity()
 risk_engine = RiskEngine()
+recommender = RecommendationEngine()
 
 # =====================================================
 # Open Video
@@ -115,6 +117,8 @@ while True:
 
     risk = risk_engine.evaluate(zones)
 
+    recommendation = recommender.generate(risk)
+
     h, w = annotated.shape[:2]
 
     # =====================================================
@@ -157,14 +161,14 @@ while True:
     # Dashboard
     # =====================================================
 
-    total_people = sum(zones.values())
+    total_people = risk["total_people"]
 
     cv2.rectangle(
-        annotated,
-        (10, 60),
-        (430, 270),
-        (40, 40, 40),
-        -1
+    annotated,
+    (10, 60),
+    (560, 420),
+    (40, 40, 40),
+    -1
     )
 
     cv2.putText(
@@ -188,9 +192,19 @@ while True:
     )
 
     cv2.putText(
+    annotated,
+    f"Highest Zone : {risk['highest_zone']}",
+    (25,175),
+    cv2.FONT_HERSHEY_SIMPLEX,
+    0.8,
+    (255,255,255),
+    2
+    )
+
+    cv2.putText(
         annotated,
         f"Reason : {risk['reason']}",
-        (25,175),
+        (25,210),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
         (255,255,255),
@@ -200,22 +214,28 @@ while True:
     cv2.putText(
         annotated,
         "Recommendation:",
-        (25,215),
+        (25,245),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
         (0,255,255),
         2
     )
 
-    cv2.putText(
+    y = 280
+
+    for rec in recommendation["recommendations"]:
+
+     cv2.putText(
         annotated,
-        risk["recommendation"],
-        (25,245),
+        f"- {rec}",
+        (25, y),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
+        0.55,
         (255,255,255),
         2
     )
+
+    y += 28
 
     # =====================================================
     # Display
