@@ -1,6 +1,6 @@
 import apiClient from '../api/axios';
 import { CONFIG } from '../config/config';
-import { CrowdStatusResponse, ZoneData, CrowdFlow, RiskLevel } from '../types/crowd';
+import { CrowdStatusResponse, ZoneData, CrowdFlow, RiskLevel, BottleneckInfo } from '../types/crowd';
 
 export const crowdService = {
   // Primary combined endpoint GET /status
@@ -33,9 +33,9 @@ export const crowdService = {
     return response.data;
   },
 
-  // Individual endpoint GET /bottleneck
-  async getBottleneck(): Promise<{ bottleneck: string }> {
-    const response = await apiClient.get<{ bottleneck: string }>(CONFIG.ENDPOINTS.BOTTLENECK);
+  // Individual endpoint GET /bottleneck — returns BottleneckInfo object from backend
+  async getBottleneck(): Promise<BottleneckInfo> {
+    const response = await apiClient.get<BottleneckInfo>(CONFIG.ENDPOINTS.BOTTLENECK);
     return response.data;
   },
 

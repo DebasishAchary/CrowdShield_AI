@@ -1,31 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Square, Maximize, Shield, Radio, Eye } from 'lucide-react';
+import { Play, Pause, Square, Maximize, Radio, Eye, WifiOff } from 'lucide-react';
 import { useCrowdStatus } from '../../hooks/useCrowdStatus';
 import { getRiskBadgeColor } from '../../utils/formatters';
+import { CONFIG } from '../../config/config';
+
+const VIDEO_FEED_URL = `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.VIDEO_FEED}`;
 
 export const VideoPlayer: React.FC = () => {
   const { people, risk, highestZone, isConnected } = useCrowdStatus();
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isStopped, setIsStopped] = useState<boolean>(false);
   const [frameCount, setFrameCount] = useState<number>(1420);
+  const [imgError, setImgError] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const riskStyle = getRiskBadgeColor(risk);
 
-  // Simulated live video frame tick
+  // Simulated frame tick (only used when not streaming from backend)
   useEffect(() => {
-    if (!isPlaying || isStopped) return;
+    if (!isPlaying || isStopped || (isConnected && !imgError)) return;
     const interval = setInterval(() => {
       setFrameCount((prev) => prev + 1);
     }, 100);
-
     return () => clearInterval(interval);
-  }, [isPlaying, isStopped]);
+  }, [isPlaying, isStopped, isConnected, imgError]);
+
+  // Reset imgError whenever connection state changes so we retry the real feed
+  useEffect(() => {
+    if (isConnected) setImgError(false);
+  }, [isConnected]);
 
   const togglePlay = () => {
     if (isStopped) {
       setIsStopped(false);
       setIsPlaying(true);
+      setImgError(false);
     } else {
       setIsPlaying((prev) => !prev);
     }
@@ -45,14 +55,16 @@ export const VideoPlayer: React.FC = () => {
     }
   };
 
-  // Generate bounding box points based on current people count
+  // Whether we should attempt the real MJPEG stream
+  const showLiveFeed = isConnected && !imgError && isPlaying && !isStopped;
+
+  // Generate simulated bounding box overlays (shown when no live feed)
   const renderSimulatedBoundingBoxes = () => {
-    if (!isPlaying || isStopped) return null;
+    if (showLiveFeed || !isPlaying || isStopped) return null;
     const count = Math.min(12, Math.max(3, people));
     const boxes = [];
 
     for (let i = 0; i < count; i++) {
-      // Deterministic pseudo-random offset based on frame and index
       const seedX = (i * 73 + frameCount * 3) % 85;
       const seedY = (i * 47 + frameCount * 2) % 65;
       const width = 8 + (i % 3);
@@ -75,7 +87,6 @@ export const VideoPlayer: React.FC = () => {
         </div>
       );
     }
-
     return boxes;
   };
 
@@ -100,33 +111,49 @@ export const VideoPlayer: React.FC = () => {
             {risk} RISK
           </span>
           <span className="text-[10px] text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-            FRAME: #{frameCount}
+            {showLiveFeed ? 'LIVE MJPEG' : `FRAME: #${frameCount}`}
           </span>
         </div>
       </div>
 
-      {/* Video Viewport / Canvas Screen */}
+      {/* Video Viewport */}
       <div className="relative aspect-video bg-slate-950 flex items-center justify-center overflow-hidden select-none">
-        {/* Synthetic Video Background Grid / Camera HUD */}
-        <div
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#0EA5E9 1px, transparent 1px), radial-gradient(#0EA5E9 1px, #0F172A 1px)`,
-            backgroundSize: '30px 30px',
-            backgroundPosition: '0 0, 15px 15px',
-          }}
-        />
 
-        {/* Video feed illustration or placeholder */}
-        {isStopped ? (
-          <div className="flex flex-col items-center gap-2 text-slate-500 z-10">
+        {/* ── Live MJPEG stream from FastAPI ── */}
+        {showLiveFeed && (
+          <img
+            ref={imgRef}
+            src={`${VIDEO_FEED_URL}?t=${Date.now()}`}
+            alt="Live surveillance feed"
+            className="absolute inset-0 w-full h-full object-contain z-10"
+            onError={() => setImgError(true)}
+          />
+        )}
+
+        {/* Background HUD grid (shown when no live stream) */}
+        {!showLiveFeed && (
+          <div
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage: `radial-gradient(#0EA5E9 1px, transparent 1px), radial-gradient(#0EA5E9 1px, #0F172A 1px)`,
+              backgroundSize: '30px 30px',
+              backgroundPosition: '0 0, 15px 15px',
+            }}
+          />
+        )}
+
+        {/* Stopped state */}
+        {isStopped && (
+          <div className="flex flex-col items-center gap-2 text-slate-500 z-20">
             <Square className="w-12 h-12 text-slate-600" />
             <span className="font-mono text-sm font-semibold">VIDEO STREAM STOPPED</span>
             <span className="text-xs text-slate-600">Click Play to Resume AI Feed</span>
           </div>
-        ) : (
+        )}
+
+        {/* Simulated view (when connected=false or imgError) */}
+        {!isStopped && !showLiveFeed && (
           <>
-            {/* Camera Overlay Graphics */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none" />
 
             {/* Corner Crosshairs */}
@@ -135,7 +162,14 @@ export const VideoPlayer: React.FC = () => {
             <div className="absolute bottom-4 left-4 border-l-2 border-b-2 border-[#0EA5E9]/60 w-5 h-5" />
             <div className="absolute bottom-4 right-4 border-r-2 border-b-2 border-[#0EA5E9]/60 w-5 h-5" />
 
-            {/* Live AI bounding box overlays */}
+            {/* Offline badge */}
+            {imgError && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-rose-500/20 border border-rose-500/40 text-rose-400 text-[10px] font-mono font-semibold px-2 py-0.5 rounded z-20">
+                <WifiOff className="w-3 h-3" /> STREAM UNAVAILABLE
+              </div>
+            )}
+
+            {/* Simulated bounding boxes */}
             {renderSimulatedBoundingBoxes()}
 
             {/* Center HUD reticle */}
@@ -145,8 +179,8 @@ export const VideoPlayer: React.FC = () => {
               </div>
             </div>
 
-            {/* Live Status indicator on video overlay */}
-            <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded border border-slate-700 text-xs font-mono flex items-center gap-2 text-slate-200">
+            {/* Live status overlay */}
+            <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded border border-slate-700 text-xs font-mono flex items-center gap-2 text-slate-200 z-20">
               <Eye className="w-3.5 h-3.5 text-[#0EA5E9] animate-pulse" />
               <span>
                 DETECTED: <strong className="text-white font-bold">{people} Persons</strong> ({highestZone})
@@ -180,7 +214,10 @@ export const VideoPlayer: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 font-mono hidden sm:inline">
-            Status: <span className="text-emerald-400 font-semibold">{isConnected ? 'LIVE BACKEND' : 'SIMULATED FEED'}</span>
+            Status:{' '}
+            <span className={`font-semibold ${isConnected && !imgError ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {isConnected && !imgError ? 'LIVE BACKEND' : 'SIMULATED FEED'}
+            </span>
           </span>
 
           <button

@@ -15,6 +15,15 @@ export interface CrowdFlow {
   STATIONARY: number;
 }
 
+/**
+ * Shape returned by GET /bottleneck on the FastAPI backend.
+ */
+export interface BottleneckInfo {
+  bottleneck: boolean;
+  zone: string | null;
+  reason: string;
+}
+
 export interface CrowdStatusResponse {
   people: number;
   risk: RiskLevel;
@@ -22,7 +31,8 @@ export interface CrowdStatusResponse {
   zones: ZoneData;
   flow: CrowdFlow;
   recommendations: string[];
-  bottleneck: string;
+  /** Can be an object (live backend) or a legacy string (simulation fallback) */
+  bottleneck: BottleneckInfo | string;
 }
 
 export interface SystemSettings {

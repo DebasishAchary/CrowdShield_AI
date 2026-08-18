@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { CrowdStatusResponse, SystemSettings, TimelineDataPoint, RiskLevel } from '../types/crowd';
+import { CrowdStatusResponse, BottleneckInfo, SystemSettings, TimelineDataPoint, RiskLevel } from '../types/crowd';
 import { crowdService } from '../services/crowdService';
 import { CONFIG } from '../config/config';
 
@@ -15,6 +15,8 @@ interface CrowdContextType {
   refreshData: () => Promise<void>;
 }
 
+// ─── Default / Simulation seed data ──────────────────────────────────────────
+// bottleneck now uses the BottleneckInfo object shape to match the backend.
 const DEFAULT_CROWD_DATA: CrowdStatusResponse = {
   people: 48,
   risk: 'MEDIUM',
@@ -36,8 +38,13 @@ const DEFAULT_CROWD_DATA: CrowdStatusResponse = {
     'Open overflow corridor at Gate A to relieve 18% density surge',
     'Monitor bottleneck near Main Entrance Corridor',
   ],
-  bottleneck: 'Detected in Zone A near Main Entrance',
+  bottleneck: {
+    bottleneck: true,
+    zone: 'Zone A',
+    reason: 'Detected in Zone A near Main Entrance',
+  } as BottleneckInfo,
 };
+// ─────────────────────────────────────────────────────────────────────────────
 
 const CrowdContext = createContext<CrowdContextType | undefined>(undefined);
 
@@ -56,7 +63,7 @@ export const CrowdProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const simRef = useRef(DEFAULT_CROWD_DATA);
 
-  // Generate realistic simulated tick if backend is offline and simulation is active
+  // ─── Simulation tick ────────────────────────────────────────────────────────
   const generateSimulatedTick = useCallback(() => {
     const prev = simRef.current;
 
@@ -97,13 +104,14 @@ export const CrowdProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const flowRight = Math.max(2, Math.floor(totalPeople * 0.15) + Math.floor(Math.random() * 3 - 1));
     const flowStationary = Math.max(1, totalPeople - (flowUp + flowDown + flowLeft + flowRight));
 
-    let bottleneck = 'No Bottleneck Detected';
+    // Build BottleneckInfo object (matching backend shape)
+    let bottleneckInfo: BottleneckInfo = { bottleneck: false, zone: null, reason: '' };
     if (newA >= 22) {
-      bottleneck = 'Detected in Zone A near Main Entrance';
+      bottleneckInfo = { bottleneck: true, zone: 'Zone A', reason: 'Detected in Zone A near Main Entrance' };
     } else if (newB >= 20) {
-      bottleneck = 'Detected in Zone B near Escalator North';
+      bottleneckInfo = { bottleneck: true, zone: 'Zone B', reason: 'Detected in Zone B near Escalator North' };
     } else if (newC >= 18) {
-      bottleneck = 'Detected in Zone C near Security Gate 2';
+      bottleneckInfo = { bottleneck: true, zone: 'Zone C', reason: 'Detected in Zone C near Security Gate 2' };
     }
 
     const recs: string[] = [];
@@ -130,12 +138,13 @@ export const CrowdProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         STATIONARY: Math.max(0, flowStationary),
       },
       recommendations: recs,
-      bottleneck,
+      bottleneck: bottleneckInfo,
     };
 
     simRef.current = updated;
     return updated;
   }, [settings]);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const recordTimelinePoint = useCallback((data: CrowdStatusResponse) => {
     const now = new Date();
@@ -177,7 +186,7 @@ export const CrowdProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [isSimulationMode, generateSimulatedTick, recordTimelinePoint]);
 
-  // Initial and recurring auto-refresh loop (every 1000ms)
+  // Initial and recurring auto-refresh loop
   useEffect(() => {
     refreshData();
     const intervalId = setInterval(() => {

@@ -1,12 +1,40 @@
 import React from 'react';
 import { AlertOctagon, CheckCircle2 } from 'lucide-react';
+import { BottleneckInfo } from '../../types/crowd';
 
 interface BottleneckCardProps {
-  bottleneck: string;
+  bottleneck: BottleneckInfo | string;
+}
+
+/**
+ * Normalise the bottleneck value coming from either:
+ *  - the live backend  →  { bottleneck: bool, zone: string|null, reason: string }
+ *  - the simulation    →  same object shape (updated in CrowdContext)
+ *  - legacy string     →  plain text (kept for safety)
+ */
+function normalise(bottleneck: BottleneckInfo | string): { isDetected: boolean; label: string } {
+  if (typeof bottleneck === 'string') {
+    const detected =
+      bottleneck.toLowerCase().includes('detected') ||
+      bottleneck.toLowerCase().includes('zone');
+    return { isDetected: detected, label: bottleneck };
+  }
+
+  // BottleneckInfo object shape
+  if (bottleneck.bottleneck) {
+    const label = bottleneck.reason
+      ? bottleneck.reason
+      : bottleneck.zone
+      ? `Detected in ${bottleneck.zone}`
+      : 'Bottleneck Detected';
+    return { isDetected: true, label };
+  }
+
+  return { isDetected: false, label: 'No Bottleneck Detected' };
 }
 
 export const BottleneckCard: React.FC<BottleneckCardProps> = ({ bottleneck }) => {
-  const isDetected = bottleneck.toLowerCase().includes('detected') || bottleneck.toLowerCase().includes('zone');
+  const { isDetected, label } = normalise(bottleneck);
 
   return (
     <div
@@ -22,7 +50,7 @@ export const BottleneckCard: React.FC<BottleneckCardProps> = ({ bottleneck }) =>
             Bottleneck Status
           </span>
           <div className="text-lg font-bold text-white mt-1.5 font-mono leading-tight">
-            {bottleneck}
+            {label}
           </div>
         </div>
 
