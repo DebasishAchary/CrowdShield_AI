@@ -17,7 +17,6 @@ export const VideoPlayer: React.FC = () => {
 
   const riskStyle = getRiskBadgeColor(risk);
 
-  // Simulated frame tick (only used when not streaming from backend)
   useEffect(() => {
     if (!isPlaying || isStopped || (isConnected && !imgError)) return;
     const interval = setInterval(() => {
@@ -26,7 +25,6 @@ export const VideoPlayer: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying, isStopped, isConnected, imgError]);
 
-  // Reset imgError whenever connection state changes so we retry the real feed
   useEffect(() => {
     if (isConnected) setImgError(false);
   }, [isConnected]);
@@ -49,16 +47,14 @@ export const VideoPlayer: React.FC = () => {
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(() => { });
+      containerRef.current.requestFullscreen().catch(() => {});
     } else {
-      document.exitFullscreen().catch(() => { });
+      document.exitFullscreen().catch(() => {});
     }
   };
 
-  // Whether we should attempt the real MJPEG stream
   const showLiveFeed = isConnected && !imgError && isPlaying && !isStopped;
 
-  // Generate simulated bounding box overlays (shown when no live feed)
   const renderSimulatedBoundingBoxes = () => {
     if (showLiveFeed || !isPlaying || isStopped) return null;
     const count = Math.min(12, Math.max(3, people));
@@ -87,6 +83,7 @@ export const VideoPlayer: React.FC = () => {
         </div>
       );
     }
+
     return boxes;
   };
 
@@ -95,7 +92,6 @@ export const VideoPlayer: React.FC = () => {
       ref={containerRef}
       className="bg-[#1E293B] rounded-xl border border-slate-700/60 shadow-xl overflow-hidden flex flex-col justify-between relative group"
     >
-      {/* Header bar */}
       <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between z-10">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold">
@@ -116,10 +112,7 @@ export const VideoPlayer: React.FC = () => {
         </div>
       </div>
 
-      {/* Video Viewport */}
       <div className="relative aspect-video bg-slate-950 flex items-center justify-center overflow-hidden select-none">
-
-        {/* ── Live MJPEG stream from FastAPI ── */}
         {showLiveFeed && (
           <img
             ref={imgRef}
@@ -130,7 +123,6 @@ export const VideoPlayer: React.FC = () => {
           />
         )}
 
-        {/* Background HUD grid (shown when no live stream) */}
         {!showLiveFeed && (
           <div
             className="absolute inset-0 opacity-20 pointer-events-none"
@@ -142,7 +134,6 @@ export const VideoPlayer: React.FC = () => {
           />
         )}
 
-        {/* Stopped state */}
         {isStopped && (
           <div className="flex flex-col items-center gap-2 text-slate-500 z-20">
             <Square className="w-12 h-12 text-slate-600" />
@@ -151,35 +142,29 @@ export const VideoPlayer: React.FC = () => {
           </div>
         )}
 
-        {/* Simulated view (when connected=false or imgError) */}
         {!isStopped && !showLiveFeed && (
           <>
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none" />
 
-            {/* Corner Crosshairs */}
             <div className="absolute top-4 left-4 border-l-2 border-t-2 border-[#0EA5E9]/60 w-5 h-5" />
             <div className="absolute top-4 right-4 border-r-2 border-t-2 border-[#0EA5E9]/60 w-5 h-5" />
             <div className="absolute bottom-4 left-4 border-l-2 border-b-2 border-[#0EA5E9]/60 w-5 h-5" />
             <div className="absolute bottom-4 right-4 border-r-2 border-b-2 border-[#0EA5E9]/60 w-5 h-5" />
 
-            {/* Offline badge */}
             {imgError && (
               <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-rose-500/20 border border-rose-500/40 text-rose-400 text-[10px] font-mono font-semibold px-2 py-0.5 rounded z-20">
                 <WifiOff className="w-3 h-3" /> STREAM UNAVAILABLE
               </div>
             )}
 
-            {/* Simulated bounding boxes */}
             {renderSimulatedBoundingBoxes()}
 
-            {/* Center HUD reticle */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
               <div className="w-48 h-48 border border-cyan-500/40 rounded-full flex items-center justify-center">
                 <div className="w-24 h-24 border border-dashed border-cyan-400/50 rounded-full"></div>
               </div>
             </div>
 
-            {/* Live status overlay */}
             <div className="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur px-2.5 py-1 rounded border border-slate-700 text-xs font-mono flex items-center gap-2 text-slate-200 z-20">
               <Eye className="w-3.5 h-3.5 text-[#0EA5E9] animate-pulse" />
               <span>
@@ -190,7 +175,6 @@ export const VideoPlayer: React.FC = () => {
         )}
       </div>
 
-      {/* Video Control Bar */}
       <div className="bg-slate-900 px-4 py-3 border-t border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button

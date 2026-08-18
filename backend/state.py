@@ -26,5 +26,16 @@ latest_data = {
 }
 
 latest_frame = None
-
 frame_lock = Lock()
+
+# Active video source.
+# Examples:
+#   "0"                    -> local webcam 0
+#   "1"                    -> local webcam 1
+#   "rtsp://..."           -> RTSP/IP camera stream
+#   "http://..."           -> HTTP/IP camera stream
+#   "/path/to/video.mp4"   -> local video file
+current_video_source = "0"
+
+# Set to True to ask the running tracker thread to stop.
+stop_tracking = False

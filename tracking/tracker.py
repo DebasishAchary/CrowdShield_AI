@@ -41,20 +41,33 @@ def start_tracker():
     bottleneck = BottleneckDetector()
 
     # =====================================================
-    # Open Video
+    # Open Selected Video Source
     # =====================================================
 
-    cap = cv2.VideoCapture(str(VIDEO))
+    source = state.current_video_source
+
+    # Convert "0" from API string to webcam index 0
+    if str(source).strip() == "0":
+        source = 0
+
+    print(f"🎥 Opening video source: {source}")
+
+    cap = cv2.VideoCapture(source)
 
     if not cap.isOpened():
-        print("❌ Failed to open video.")
-        return  # Changed from exit() to return
+        print(f"❌ Failed to open video source: {source}")
+        return
 
     frame_count = 0
 
     while True:
 
-        ret, frame = cap.read()
+        # Check whether another source has been requested
+        if state.stop_tracking:
+            print("🛑 Tracker stop requested.")
+            break
+
+        ret, frame = cap.read()    
 
         if not ret:
             break
