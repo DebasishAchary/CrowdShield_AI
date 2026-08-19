@@ -3,16 +3,13 @@ import { CONFIG } from '../config/config';
 
 export const apiClient = axios.create({
   baseURL: CONFIG.API_BASE_URL,
-  timeout: 3000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 0,
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Silent interceptor for backend status checks
+    console.error('API Error:', error);
     return Promise.reject(error);
   }
 );

@@ -21,7 +21,7 @@ export const DashboardLayout: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-rose-500"></span>
                 <span>
-                  <strong>Backend Offline:</strong> Failed to connect to FastAPI backend at <code className="bg-slate-900/80 px-1.5 py-0.5 rounded text-rose-400 font-mono">http://127.0.0.1:8000</code>. Displaying simulated fallback telemetry.
+                  <strong>Backend Offline:</strong> Failed to connect to FastAPI backend at <code className="bg-slate-900/80 px-1.5 py-0.5 rounded text-rose-400 font-mono">http://10.70.39.245:8000</code>. Displaying simulated fallback telemetry.
                 </span>
               </div>
             </div>
