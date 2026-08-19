@@ -1,238 +1,308 @@
 # 🛡️ CrowdShield AI
 
-**Real-time AI-powered crowd surveillance and safety management system.**
+**Real-time AI-powered crowd surveillance and safety-management system.**
 
-[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-green.svg)](https://fastapi.tiangolo.com/)
 [![YOLOv8](https://img.shields.io/badge/YOLO-v8-yellow.svg)](https://ultralytics.com/)
-[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Capacitor](https://img.shields.io/badge/Capacitor-Android-119EFF.svg)](https://capacitorjs.com/)
 
 ---
 
-## 🚨 Problem Statement
+## 🚨 Problem statement
 
-Large public gatherings — concerts, stadiums, railway stations, festivals — are prone to crowd crushes, stampedes, and bottlenecks that can result in casualties. Traditional CCTV monitoring relies heavily on manual observation, which is slow, error-prone, and reactive rather than proactive. 
+Large gatherings such as concerts, stadiums, stations, festivals, and religious events can develop dangerous congestion, bottlenecks, and crowd-crush risks. Manual CCTV monitoring is often reactive and difficult to scale.
 
-**CrowdShield AI** provides an automated, proactive, AI-driven solution to monitor crowd dynamics in real time and prevent disasters before they happen.
+CrowdShield AI automatically analyzes live video to help operators see crowd density, movement, bottlenecks, risk, and recommended actions in real time.
 
----
+## 💡 Solution overview
 
-## 💡 Solution Overview
+The tracking pipeline uses **YOLOv8** person detection and **ByteTrack** multi-object tracking. It accepts laptop webcams, mobile-phone camera frames, network streams, and uploaded videos.
 
-CrowdShield AI processes live CCTV video feeds using **YOLOv8** (object detection) and **ByteTrack** (multi-object tracking) to detect, count, and track people in real time. 
+For every processed frame, the system:
 
-The system automatically:
-1. Divides the camera view into 4 quadrant zones (A, B, C, D).
-2. Analyzes crowd density, flow direction, and bottleneck formation.
-3. Computes a dynamic risk level (**LOW / MEDIUM / HIGH / CRITICAL**).
-4. Generates actionable AI recommendations for crowd control officers.
+1. Detects and tracks people.
+2. Divides the view into zones A–D and calculates density.
+3. Analyzes movement direction and potential bottlenecks.
+4. Calculates a risk level: `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+5. Generates crowd-management recommendations.
+6. Publishes telemetry and an annotated MJPEG stream to the web and Android clients.
 
-All telemetry and recommendations are streamed to a modern, glassmorphism-styled React dashboard, updating every second.
-
----
-
-## 🏗️ System Architecture
+## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    A[CCTV / Video File] --> B(YOLOv8 Detection)
-    B --> |Detects persons per frame| C(ByteTrack)
-    C --> |Assigns persistent IDs| D{Analytics Engine}
-    
-    D --> E[Zone Density 4 Quadrants]
-    D --> F[Flow Analysis Vectors]
-    D --> G[Bottleneck Detector]
-    
-    E --> H(Risk Engine)
-    F --> H
-    G --> H
-    
-    H --> |Outputs LOW/MEDIUM/HIGH/CRITICAL| I(Recommender)
-    I --> |Generates Actionable Advice| J[(backend/state.py In-Memory State)]
-    
-    J --> |State Updated Every Frame| K[FastAPI REST API]
-    K --> |Polled every 1s + MJPEG Stream| L[React Dashboard UI]
+    A[Laptop webcam] --> D[Video source]
+    B[Mobile phone camera] -->|POST /phone_frame| D
+    C[Network stream or uploaded video] --> D
+    D --> E[OpenCV frame processing]
+    E --> F[YOLOv8 person detection]
+    F --> G[ByteTrack tracking]
+    G --> H{Analytics engine}
+    H --> I[Zone density]
+    H --> J[Crowd flow]
+    H --> K[Bottleneck detection]
+    I --> L[Risk engine]
+    J --> L
+    K --> L
+    L --> M[Recommendation engine]
+    M --> N[(Shared backend state)]
+    N --> O[FastAPI REST API]
+    N --> P[MJPEG video stream]
+    O --> Q[React dashboard]
+    O --> R[Android app]
+    P --> Q
+    P --> R
 ```
 
----
+### Phone-camera flow
 
-## 🛠️ Tech Stack
+The phone and the computer running FastAPI must be on the same LAN. The Android/WebView camera captures JPEG frames and posts them to the backend; the tracker switches to phone mode and the annotated result is available at `/video_feed`.
 
-### **Backend (Python)**
-*   **FastAPI**: High-performance REST API and MJPEG video streaming.
-*   **Uvicorn**: ASGI server (binds to `0.0.0.0:8000` for LAN access).
-*   **OpenCV (cv2)**: Video capture, frame processing, and on-the-fly annotation.
-*   **Ultralytics YOLOv8**: State-of-the-art person detection (`yolov8n.pt`).
-*   **ByteTrack**: Robust multi-object tracking with persistent IDs.
-*   **Threading**: Background tracker thread decoupled from the API for smooth performance.
+```text
+Phone camera → JPEG frame → POST /phone_frame → FastAPI → YOLOv8 + ByteTrack
+             → crowd analytics → annotated frame → GET /video_feed → web / Android UI
+```
 
-### **Frontend (React)**
-*   **React 18 + TypeScript**: Built with Vite for lightning-fast HMR.
-*   **TailwindCSS**: Dark theme, modern glassmorphism styling.
-*   **Framer Motion**: Smooth micro-animations and transitions.
-*   **Recharts**: Real-time AreaChart (timeline), BarChart (flow), PieChart (zones).
-*   **Axios**: HTTP polling with a 1000ms heartbeat.
-*   **React Hot Toast**: Live, unobtrusive alert notifications.
-*   **Lucide React**: Clean, modern iconography.
+## 🛠️ Tech stack
 
----
+| Area | Technologies |
+|---|---|
+| Backend | Python, FastAPI, Uvicorn, OpenCV, NumPy, Ultralytics YOLOv8, ByteTrack |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Axios, React Router, Recharts |
+| Mobile | Capacitor 8, Android, Android Camera API through the WebView |
 
-## ✨ Key Features
+## ✨ Features
 
-*   ✅ **Real-time Detection & Tracking**: Unique IDs assigned to every individual.
-*   ✅ **4-Zone Spatial Density Analysis**: Automatically monitors distinct sectors (A, B, C, D).
-*   ✅ **Directional Crowd Flow**: Tracks 5 vectors (UP, DOWN, LEFT, RIGHT, STATIONARY).
-*   ✅ **Automated Bottleneck Detection**: Identifies congestion zones instantly.
-*   ✅ **Dynamic Risk Classification**: 4-level scale (LOW, MEDIUM, HIGH, CRITICAL).
-*   ✅ **AI-Generated Recommendations**: Actionable crowd control tactics based on live data.
-*   ✅ **Live MJPEG Video Feed**: Fully annotated video streamed directly to the browser.
-*   ✅ **Simulation Fallback Mode**: Graceful UI degradation when the backend is offline.
-*   ✅ **LAN Network Support**: Accessible from any smartphone or tablet on the local network.
-*   ✅ **30-Point Rolling Timeline**: Real-time telemetry history for analytics.
-*   ✅ **Configurable Thresholds**: Adjustable density limits and refresh rates.
+- Real-time person detection, bounding boxes, confidence, and persistent tracking IDs.
+- Four-zone (A–D) crowd-density analysis.
+- Crowd-flow categories: `UP`, `DOWN`, `LEFT`, `RIGHT`, and `STATIONARY`.
+- Bottleneck detection, dynamic risk classification, and actionable recommendations.
+- Annotated MJPEG video feed at `GET /video_feed`.
+- Laptop, phone, network/IP stream, and uploaded-video sources.
+- LAN-ready backend for Android or another device on the same network.
 
----
+## 📡 API endpoints
 
-## 📡 API Endpoints
-
-The FastAPI backend runs on port `8000` and exposes the following endpoints:
+The FastAPI service runs on port `8000`.
 
 | Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | API Health check & status |
-| `GET` | `/status` | Full state snapshot (people, risk, zones, flow, bottlenecks) |
-| `GET` | `/risk` | Current risk level, total people, and highest density zone |
-| `GET` | `/zones` | Per-zone person counts `{ A, B, C, D }` |
-| `GET` | `/flow` | Directional flow `{ UP, DOWN, LEFT, RIGHT, STATIONARY }` |
-| `GET` | `/recommendations` | List of AI-generated action strings |
-| `GET` | `/bottleneck` | Returns `{ bottleneck: bool, zone: string\|null, reason: string }` |
-| `GET` | `/video_feed` | MJPEG multipart stream of the live annotated video |
+|---|---|---|
+| `GET` | `/` | Backend health check |
+| `GET` | `/status` | Full crowd status and active source |
+| `GET` | `/risk` | Current risk, people count, and highest-density zone |
+| `GET` | `/zones` | Zone-density information |
+| `GET` | `/flow` | Crowd movement information |
+| `GET` | `/recommendations` | Current recommendations |
+| `GET` | `/bottleneck` | Bottleneck information |
+| `GET` | `/video_feed` | Processed MJPEG video stream |
+| `POST` | `/phone_frame` | Receives a mobile-camera JPEG file as `file` |
+| `POST` | `/set_source` | Changes the video source (`{ "source": "phone" }`, `"0"`, RTSP URL, etc.) |
+| `POST` | `/upload_video` | Uploads and starts processing a supported video file |
 
----
+## 🖥️ Frontend pages
 
-## 🖥️ Frontend Pages
+- **Dashboard**: people count, risk, highest-density zone, bottleneck status, live feed, zones, flow, and recommendations.
+- **Monitoring**: live stream, source controls, upload/network-source controls, and phone-camera controls.
+- **Analytics**: people-count timeline, zone distribution, and crowd-flow charts.
+- **Settings**: density thresholds and refresh-interval controls.
 
-1.  **Dashboard (`/`)**: 
-    *   4 high-level status cards (People Count, Risk Level, Highest Zone, Bottleneck).
-    *   Live MJPEG video player widget.
-    *   4 sector zone cards with density bars.
-    *   Crowd flow direction panel.
-    *   AI Recommendations panel with dispatch actions.
-2.  **Monitoring (`/monitoring`)**: 
-    *   Full-width live HD video stream focus.
-    *   Telemetry metric overlay cards.
-3.  **Analytics (`/analytics`)**: 
-    *   Real-time people count timeline (AreaChart).
-    *   Zone distribution (PieChart).
-    *   Flow direction breakdown (BarChart).
-4.  **Settings (`/settings`)**: 
-    *   Adjustable Medium/High density thresholds (sliders).
-    *   Configurable auto-refresh interval.
-
----
-
-## 🚀 How to Run
-
-### Prerequisites
-*   Python 3.11+
-*   Node.js 18+
-*   npm or yarn
-
-### 1. Start the Backend
-
-```bash
-# Clone the repository
-git clone https://github.com/DebasishAchary/CrowdShield_AI.git
-cd CrowdShield_AI
-
-# Create a virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install fastapi uvicorn opencv-python ultralytics
-
-# Start the application
-python app.py
-```
-*The backend will start on `http://0.0.0.0:8000` (accessible on your LAN).*
-
-### 2. Start the Frontend
-
-Open a new terminal window:
-
-```bash
-cd CrowdShield_AI/frontend
-
-# Install dependencies
-npm install
-
-# Start the Vite development server
-npm run dev
-```
-*The frontend will open at `http://localhost:3000`.*
-
-### 🌐 Network Access (LAN)
-
-To view the dashboard from another device (like a phone or tablet) on the same WiFi network:
-1. Find your computer's IP address (e.g., `192.168.1.100`).
-2. On your device, open a browser and navigate to: `http://192.168.1.100:3000`
-*(The API configuration is dynamic and will automatically connect to your computer's IP).*
-
----
-
-## 📂 Project Structure
+## 📂 Project structure
 
 ```text
 CrowdShield_AI/
-├── app.py                      # Application entry point (Uvicorn)
-├── backend/                    # FastAPI server & state management
-│   ├── api.py                  # REST API routes and CORS config
-│   ├── state.py                # In-memory shared state
-│   ├── streamer.py             # MJPEG video streaming logic
-│   └── tracker_service.py      # Background thread manager
-├── tracking/                   # Computer Vision Pipeline
-│   └── tracker.py              # Main orchestrator (YOLOv8 + ByteTrack)
-├── analytics/                  # Telemetry Modules
-│   ├── density.py              # Quadrant counting
-│   ├── flow.py                 # Vector analysis
-│   └── bottleneck.py           # Congestion detection
-├── prediction/                 # AI Engines
-│   └── risk_engine.py          # Risk evaluation logic
-├── recommendation/             # AI Action Generation
-│   └── recommender.py          # Mitigation suggestions
-└── frontend/                   # React + Vite UI
-    ├── src/
-    │   ├── api/                # Axios configuration
-    │   ├── components/         # Reusable UI widgets
-    │   ├── config/             # Environment & endpoint config
-    │   ├── context/            # Global state (CrowdContext)
-    │   ├── pages/              # Dashboard, Analytics, Monitoring views
-    │   ├── services/           # API fetch layer
-    │   └── types/              # TypeScript interfaces
-    └── ...
+├── app.py                      # Uvicorn entry point
+├── backend/
+│   ├── api.py                  # FastAPI routes, including /phone_frame
+│   ├── state.py                # Shared in-memory state
+│   ├── streamer.py             # MJPEG streaming
+│   └── tracker_service.py      # Tracking-thread lifecycle
+├── detection/
+│   ├── detector.py             # YOLOv8 detection and tracking
+│   └── person_detector.py
+├── tracking/tracker.py         # Tracking and analytics pipeline
+├── analytics/                  # Density, flow, and bottleneck modules
+├── prediction/risk_engine.py   # Risk evaluation
+├── recommendation/recommender.py
+├── datasets/videos/            # Local videos and uploads (ignored by Git)
+├── frontend/
+│   ├── android/                # Capacitor Android project
+│   ├── src/
+│   └── capacitor.config.ts
+└── .gitignore
 ```
 
----
+## 🚀 Installation and startup
 
-## 🔮 Future Improvements
+### Prerequisites
 
-*   **Multi-Camera Support**: Aggregate data from multiple camera feeds into a single command center view.
-*   **Database Integration**: Store historical telemetry data in PostgreSQL/TimescaleDB for long-term trend analysis.
-*   **WebSockets**: Transition from 1-second HTTP polling to real-time WebSockets for sub-second latency updates.
-*   **Advanced AI Models**: Fine-tune YOLO models specifically for dense crowd heads (e.g., ShanghaiTech dataset).
-*   **Automated Alerts**: Integrate SMS/Email alerting (via Twilio/SendGrid) for CRITICAL risk events.
+- Python 3.11+
+- Node.js 18+ and npm
+- Android Studio / Android SDK (for APK builds)
+- Git
 
----
+### Backend
+
+```bash
+git clone https://github.com/DebasishAchary/CrowdShield_AI.git
+cd CrowdShield_AI
+python -m venv venv
+```
+
+Activate the environment:
+
+- Windows: `./venv/Scripts/Activate.ps1`
+- macOS/Linux: `source venv/bin/activate`
+
+Install the dependencies:
+
+```bash
+pip install fastapi uvicorn opencv-python numpy ultralytics python-multipart
+```
+
+Start FastAPI from the repository root:
+
+```bash
+python -m uvicorn backend.api:app --host 0.0.0.0 --port 8000
+```
+
+For local testing, open `http://localhost:8000`. A healthy backend returns:
+
+```json
+{
+  "message": "CrowdShield AI Backend Running",
+  "status": "online"
+}
+```
+
+`python app.py` is also supported as a convenience entry point.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Before using another device or building Android, set the computer's LAN address in both of these files:
+
+- `frontend/src/config/config.ts`
+- `frontend/src/components/monitoring/PhoneCamera.tsx`
+
+For example:
+
+```ts
+const BACKEND_URL = 'http://<YOUR-LAPTOP-IP>:8000';
+```
+
+Find the IPv4 address with `ipconfig` on Windows or `ifconfig` on macOS/Linux. Build the production web bundle with:
+
+```bash
+npm run build
+```
+
+### Android (Capacitor)
+
+From `frontend/` after building the web bundle:
+
+```bash
+npx cap sync android
+cd android
+./gradlew.bat assembleDebug
+```
+
+The debug APK is written to:
+
+```text
+frontend/android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+To install it over ADB:
+
+```bash
+adb devices
+adb install -r "./app/build/outputs/apk/debug/app-debug.apk"
+```
+
+The Android manifest includes `INTERNET` and `CAMERA` permissions, and cleartext LAN HTTP is enabled for the development backend.
+
+### Using the phone as a camera
+
+1. Connect the phone and laptop to the same Wi-Fi/LAN.
+2. Configure the laptop IP as described above.
+3. Start the backend with `--host 0.0.0.0`.
+4. Build, sync, and install the Android app.
+5. In **Monitoring**, start **Phone Camera** and grant camera permission.
+
+The app sends a JPEG approximately every 500 ms to `/phone_frame`; the backend returns the processed result through `/video_feed`.
+
+## 🎥 Supported video sources
+
+| Source | Value |
+|---|---|
+| Laptop webcam | `0` |
+| Second webcam | `1` |
+| Mobile phone | `phone` |
+| Network camera | e.g. `rtsp://<camera-ip>:554/stream` |
+| Uploaded video | `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.mpeg`, `.mpg` |
+
+## 🧪 Quick checks
+
+```bash
+curl.exe http://localhost:8000/
+curl.exe http://localhost:8000/status
+curl.exe http://localhost:8000/risk
+curl.exe http://localhost:8000/zones
+curl.exe http://localhost:8000/flow
+```
+
+## 🛠️ Troubleshooting
+
+### Backend or phone cannot connect
+
+- Confirm the phone and computer use the same network.
+- Check the configured `BACKEND_URL` in both frontend files.
+- Run FastAPI with `--host 0.0.0.0`.
+- Allow Python/Uvicorn through Windows Firewall if prompted.
+- On the phone, open `http://<YOUR-LAPTOP-IP>:8000`; it should show the health-check JSON.
+
+### Camera permission or phone frames fail
+
+- Enable the Android camera permission for CrowdShield AI.
+- Confirm the backend is reachable before starting the phone camera.
+- Ensure the phone camera preview is active and the backend is receiving `POST /phone_frame` requests.
+
+### YOLOv8 does not detect people
+
+- Ensure the YOLO model is available locally or can be downloaded by Ultralytics.
+- Make sure people are visible and the video is clear.
+- Check the backend terminal for detector or tracker errors.
+
+## 🔐 Ignored files
+
+The repository ignores environment-specific and large/generated files, including:
+
+- `venv/`, `__pycache__/`, and `*.pyc`
+- `frontend/node_modules/` and `frontend/dist/`
+- `.env`, `.env.*`, `.vscode/`, and `*.log`
+- `datasets/videos/` and `models/*.pt`
+
+Video datasets and model weights are therefore not included in Git by default.
+
+## 🔮 Future improvements
+
+- Multi-camera command center
+- Database-backed historical analytics
+- WebSocket telemetry and alerting
+- Crowd heatmaps and advanced crowd-specific models
+- Push notifications, incident reporting, and edge deployment
 
 ## 👨‍💻 Team
 
-Built with ❤️ for the Hackathon by **Debasish Achary** & Team.
-
----
+Built with ❤️ for the Hackathon by **Debasish Achary & Team**.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License
